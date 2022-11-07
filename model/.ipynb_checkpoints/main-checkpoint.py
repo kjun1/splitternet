@@ -103,7 +103,10 @@ class SplitterNet(pl.LightningModule):
     def test_input(self):
         x = torch.ones(64, 1, 32, 32)
         y = torch.ones(64, 100)
-        
+        print("encoder out *2")
+        print(self.content_encoder(x).shape)
+        print("decoder out")
+        print(self.forward(x,x).shape)
         try:
             self.dis_loss(x, y, dis_idx=0)
         except:
@@ -116,7 +119,6 @@ class SplitterNet(pl.LightningModule):
         
         try:
             self.forward(x, x)
-            print(self.forward(x,x).shape)
         except:
             print("generator error")
         

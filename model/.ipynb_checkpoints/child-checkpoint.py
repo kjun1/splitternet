@@ -22,9 +22,9 @@ class Encoder(nn.Module):
         self.conv2 = nn.Conv2d(
             in_channels=8,
             out_channels=16,
-            kernel_size=(4, 8),
+            kernel_size=(3, 9),
             stride=(2, 2),
-            padding=(1, 3),
+            padding=(1, 4),
             bias=False,
             padding_mode='zeros',
             )
@@ -32,9 +32,9 @@ class Encoder(nn.Module):
         self.conv3 = nn.Conv2d(
             in_channels=16,
             out_channels=32,
-            kernel_size=(4, 8),
+            kernel_size=(3, 9),
             stride=(2, 2),
-            padding=(1, 3),
+            padding=(1, 4),
             bias=False,
             padding_mode='zeros',
             )
@@ -42,9 +42,9 @@ class Encoder(nn.Module):
         self.conv4 = nn.Conv2d(
             in_channels=32,
             out_channels=32,
-            kernel_size=(4, 8),
-            stride=(2, 2),
-            padding=(1, 3),
+            kernel_size=(3, 9),
+            stride=(1, 1),
+            padding=(1, 4),
             bias=False,
             padding_mode='zeros',
             )
@@ -52,9 +52,9 @@ class Encoder(nn.Module):
         self.conv5 = nn.Conv2d(
             in_channels=32,
             out_channels=64,
-            kernel_size=(9, 5),
-            stride=(2, 2),
-            padding=(4, 2),
+            kernel_size=(3, 3),
+            stride=(1, 1),
+            padding=(1, 1),
             bias=False,
             padding_mode='zeros',
             )
@@ -87,10 +87,10 @@ class Decoder(nn.Module):
         self.tconv1 = nn.ConvTranspose2d(
             in_channels=64,
             out_channels=32,
-            kernel_size=(9, 5),
-            stride=(2, 2),
-            padding=(4, 2),
-            output_padding=1,
+            kernel_size=(3, 3),
+            stride=(1, 1),
+            padding=(1, 1),
+            output_padding=0,
             bias=False,
             padding_mode='zeros',
             )
@@ -98,9 +98,9 @@ class Decoder(nn.Module):
         self.tconv2 = nn.ConvTranspose2d(
             in_channels=32,
             out_channels=32,
-            kernel_size=(4, 8),
-            stride=(2, 2),
-            padding=(1, 3),
+            kernel_size=(3, 9),
+            stride=(1, 1),
+            padding=(1, 4),
             output_padding=0,
             bias=False,
             padding_mode='zeros',
@@ -109,10 +109,10 @@ class Decoder(nn.Module):
         self.tconv3 = nn.ConvTranspose2d(
             in_channels=32,
             out_channels=16,
-            kernel_size=(4, 8),
+            kernel_size=(3, 9),
             stride=(2, 2),
-            padding=(1, 3),
-            output_padding=0,
+            padding=(1, 4),
+            output_padding=1,
             bias=False,
             padding_mode='zeros',
             )
@@ -120,10 +120,10 @@ class Decoder(nn.Module):
         self.tconv4 = nn.ConvTranspose2d(
             in_channels=16,
             out_channels=8,
-            kernel_size=(4, 8),
+            kernel_size=(3, 9),
             stride=(2, 2),
-            padding=(1, 3),
-            output_padding=0,
+            padding=(1, 4),
+            output_padding=1,
             bias=False,
             padding_mode='zeros',
             )
@@ -135,7 +135,7 @@ class Decoder(nn.Module):
             kernel_size=(3, 9),
             stride=(2, 2),
             padding=(1, 4),
-            output_padding=0,
+            output_padding=1,
             bias=False,
             padding_mode='zeros',
             )
@@ -164,7 +164,7 @@ class Discriminator(nn.Module):
         super().__init__()
         self.lr = nn.LeakyReLU(negative_slope=0.02)
         self.sigmoid = nn.Sigmoid()
-        self.linear1 = nn.Linear(32, 256)
+        self.linear1 = nn.Linear(4*4*32, 256)
         self.linear2 = nn.Linear(256, 100)
         
     def forward(self, x):

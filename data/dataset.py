@@ -88,7 +88,7 @@ class JVS_Dataset(Dataset):
                     
                     speaker_index = self.speakers.index(speaker)
                     speaker_one_hot = torch.nn.functional.one_hot(torch.tensor(speaker_index), num_classes=len(self.speakers))
-
+                    
                     yield chunk, speaker_one_hot, spec_max, spec_min
     
     def extract_wave(self, wav_paths, transcriptions):
