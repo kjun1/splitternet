@@ -99,7 +99,7 @@ class SplitterNet(pl.LightningModule):
         
         if optimizer_idx==2:
             reconstruction, z1_reconstruction, content_dis, attribute_dis, content_kl, attribute_kl= self.gen_loss(x, y)
-            loss = reconstruction + z1_reconstruction - 10*content_dis + 2.5*attribute_dis + 0.5*content_kl + 5*attribute_kl
+            loss = reconstruction + z1_reconstruction - 0.02*content_dis + 0.01*attribute_dis + 0.1*content_kl + 1.5*attribute_kl
             self.log("reconstruction", reconstruction)
             self.log("z1_reconstruction", z1_reconstruction)
             self.log("content_dis", content_dis)
