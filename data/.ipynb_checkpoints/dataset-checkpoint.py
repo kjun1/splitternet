@@ -4,6 +4,10 @@ from torch import nn
 from torch.utils.data import Dataset, DataLoader
 import nnmnkwii.datasets.jvs
 from nnmnkwii.io import hts
+import pyworld as pw
+import pysptk as ps
+import os
+
 
 class TransSqueeze(nn.Module):
     def __init__(self, dim=0):
@@ -43,13 +47,15 @@ class TransChunked(nn.Module):
         return l
     
 
-class JVS_Dataset(Dataset):
+class JVSDataset(Dataset):
     def __init__(self, root, speakers, data_type='wave'):
         super().__init__()
         
         self.data_type = data_type
         self.speakers = speakers # list(int)
+        self.fs = 24000
         self.data = list(self.extract_data(root))
+        
         
     def __getitem__(self, index):
         return self.data[index]
@@ -82,14 +88,27 @@ class JVS_Dataset(Dataset):
                 spec_min = spec.min()
                 
                 chunked = TransChunked()
-                
                 for chunk in chunked(spec):
                     chunk = chunk.unsqueeze(0)
                     
                     speaker_index = self.speakers.index(speaker)
                     speaker_one_hot = torch.nn.functional.one_hot(torch.tensor(speaker_index), num_classes=len(self.speakers))
-
+                    
                     yield chunk, speaker_one_hot, spec_max, spec_min
+            
+            elif self.data_type == 'mc':
+                f0, sp, ap = pw.wav2world(wave.squeeze(0).to(torch.double).numpy(), self.fs)
+                mc = ps.sp2mc(sp, order=31, alpha=ps.util.mcepalpha(24000))
+                mc = torch.from_numpy(mc.T)
+                chunked = TransChunked()
+
+                for chunk in chunked(mc):
+                    chunk = chunk.unsqueeze(0).to(torch.float)
+                    
+                    speaker_index = self.speakers.index(speaker)
+                    speaker_one_hot = torch.nn.functional.one_hot(torch.tensor(speaker_index), num_classes=len(self.speakers))
+                    
+                    yield chunk, speaker_one_hot
     
     def extract_wave(self, wav_paths, transcriptions):
         xx = torch.tensor([[]])
@@ -97,3 +116,22 @@ class JVS_Dataset(Dataset):
             x, sr = torchaudio.load(wav_path.replace("wav24kHz16bit/", "trimed_pau/"))
             xx = torch.cat((xx, x), dim=1)        
         return xx
+
+    
+class McJVSDataset(Dataset):
+    def __init__(self, root):
+        super().__init__()
+        
+        self.fs = 24000
+        self.data = list(self.extract_data(root))
+        
+        
+    def __getitem__(self, index):
+        return self.data[index]
+    
+    def __len__(self):
+        return len(self.data)
+    
+    def extract_data(self, root):
+        for i in os.listdir(root):
+            yield torch.load(os.path.join(root, i))

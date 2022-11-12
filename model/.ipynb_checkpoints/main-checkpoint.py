@@ -12,9 +12,10 @@ class SplitterNet(pl.LightningModule):
         self.decoder = Decoder()
         self.content_discriminator = Discriminator()
         self.attribute_discriminator = Discriminator()
-        self.Da_lr = 1e-3
-        self.Dc_lr = 1e-3
-        self.G_lr = 1e-3
+        self.Da_lr = 1e-4
+        self.Dc_lr = 1e-4
+        self.G_lr = 1e-4
+        self.h = [1.0, 1.001, -0.70, 0.35, 0.25, 0.07]
 
     def forward(self, x, y):
         z = self.content_encoder(x)
@@ -31,7 +32,7 @@ class SplitterNet(pl.LightningModule):
         out = self.content_encoder(x)
         mu, log_var = out.chunk(2, dim=1)
         
-        content_kl = - 0.5 * torch.mean(1 + log_var - mu.pow(2) - log_var.exp())
+        content_kl = - 0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
         
         eps = torch.randn_like(torch.exp(log_var))
         z1 = mu + torch.exp(log_var / 2) * eps
@@ -42,7 +43,7 @@ class SplitterNet(pl.LightningModule):
         out = self.attribute_encoder(x)
         mu, log_var = out.chunk(2, dim=1)
         
-        attribute_kl = - 0.5 * torch.mean(1 + log_var - mu.pow(2) - log_var.exp())
+        attribute_kl = - 0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
         
         eps = torch.randn_like(torch.exp(log_var))
         z2 = mu + torch.exp(log_var / 2) * eps
@@ -53,14 +54,14 @@ class SplitterNet(pl.LightningModule):
         z = torch.cat([z1, z2], dim=1)
         x_hat = self.decoder(z)
         
-        reconstruction = nn.functional.mse_loss(x, x_hat, reduction='mean')
+        reconstruction = nn.functional.mse_loss(x, x_hat, reduction='sum')
         
         out = self.content_encoder(x_hat)
         mu, log_var = out.chunk(2, dim=1)
         
         eps = torch.randn_like(torch.exp(log_var))
         z1_hat = mu + torch.exp(log_var / 2) * eps
-        z1_reconstruction = nn.functional.mse_loss(z1, z1_hat, reduction='mean')
+        z1_reconstruction = nn.functional.mse_loss(z1, z1_hat, reduction='sum')
         
         loss = [reconstruction, z1_reconstruction, content_dis, attribute_dis, content_kl, attribute_kl]
 
@@ -99,7 +100,7 @@ class SplitterNet(pl.LightningModule):
         
         if optimizer_idx==2:
             reconstruction, z1_reconstruction, content_dis, attribute_dis, content_kl, attribute_kl= self.gen_loss(x, y)
-            loss = 0.1*reconstruction + 0.1*z1_reconstruction - 10*content_dis + 2.5*attribute_dis + 0.5*content_kl + 5*attribute_kl
+            loss = self.h[0]*reconstruction + self.h[1]*z1_reconstruction + self.h[2]*content_dis + self.h[3]*attribute_dis + self.h[4]*content_kl + self.h[5]*attribute_kl
             self.log("reconstruction", reconstruction)
             self.log("z1_reconstruction", z1_reconstruction)
             self.log("content_dis", content_dis)
@@ -107,12 +108,18 @@ class SplitterNet(pl.LightningModule):
             self.log("content_kl", content_kl)
             self.log("attribute_kl", attribute_kl)
             self.log("train_loss", loss)
-            self.log("lr", self.G_lr)
         return loss
+    
+    # define valid loop
+    def validation_step(self, batch, batch_idx):
+        x, y = batch[0], batch[1].float()
+        reconstruction, z1_reconstruction, content_dis, attribute_dis, content_kl, attribute_kl= self.gen_loss(x, y)
+        loss = self.h[0]*reconstruction #+ self.h[1]*z1_reconstruction + self.h[2]*content_dis + self.h[3]*attribute_dis + self.h[4]*content_kl + self.h[5]*attribute_kl
+        self.log("val_loss", loss)
     
     def test_input(self):
         x = torch.ones(64, 1, 32, 32)
-        y = torch.ones(64, 100)
+        y = torch.ones(64, 51)
         print("encoder out *2")
         print(self.content_encoder(x).shape)
         print("decoder out")

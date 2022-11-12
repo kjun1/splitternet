@@ -165,7 +165,7 @@ class Discriminator(nn.Module):
         self.lr = nn.LeakyReLU(negative_slope=0.02)
         self.sigmoid = nn.Sigmoid()
         self.linear1 = nn.Linear(4*4*32, 256)
-        self.linear2 = nn.Linear(256, 100)
+        self.linear2 = nn.Linear(256, 51)
         
     def forward(self, x):
         out = x.view(x.shape[0], -1)

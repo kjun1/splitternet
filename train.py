@@ -2,29 +2,30 @@ import os
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.callbacks import ModelCheckpoint
+from sklearn.model_selection import train_test_split
+
 from model.main import SplitterNet
-from data.dataset import JVS_Dataset
+from data.datamodule import JVSDataModule
+
+
 
 device = 'cuda:0'
 model = SplitterNet()
+
+checkpoint_callback = ModelCheckpoint(save_top_k=10, monitor="val_loss")
 
 trainer = pl.Trainer(
         accelerator='gpu',
         devices=1,
         logger=[TensorBoardLogger("logs/")],
-        max_epochs=100000,)
+        max_epochs=100000,
+        callbacks=[checkpoint_callback],
+        )
 
 
-root = os.path.join("../",  'jvs_r9y9_ver1')
+root = "melceps" #os.path.join("../",  'jvs_r9y9_ver1')
 
-speakers = ['jvs{0:03}'.format(i) for i in range(1, 101)]
-dataset = JVS_Dataset(root, data_type='mel', speakers=speakers)
+data_module = JVSDataModule(root, data_type="mc")
 
-dataloader = DataLoader(
-    dataset=dataset,
-    batch_size=512,
-    shuffle=True,
-    num_workers=24
-)
-
-trainer.fit(model, dataloader)
+trainer.fit(model, data_module)
