@@ -1,4 +1,4 @@
-from .child import Encoder, Decoder, Discriminator
+from .child import AttributeEncoder, ContentEncoder, Decoder, AttributeDiscriminator, ContentDiscriminator
 import pytorch_lightning as pl
 import torch
 from torch import nn
@@ -7,15 +7,15 @@ import itertools
 class SplitterNet(pl.LightningModule):
     def __init__(self):
         super(SplitterNet, self).__init__()
-        self.content_encoder = Encoder()
-        self.attribute_encoder = Encoder()
+        self.content_encoder = ContentEncoder()
+        self.attribute_encoder = AttributeEncoder()
         self.decoder = Decoder()
-        self.content_discriminator = Discriminator()
-        self.attribute_discriminator = Discriminator()
-        self.Da_lr = 1e-4
-        self.Dc_lr = 1e-4
+        self.content_discriminator = ContentDiscriminator()
+        self.attribute_discriminator = AttributeDiscriminator()
+        self.Da_lr = 1e-8
+        self.Dc_lr = 1e-8
         self.G_lr = 1e-4
-        self.h = [1.0, 1.001, -0.70, 0.35, 0.25, 0.07]
+        self.h = [1.0, 0.03, -1.5, 1.5, 1.55, 1.525] #[1.0, 0.03, -1.0, 1.0, 0.60, 0.55]
 
     def forward(self, x, y):
         z = self.content_encoder(x)
@@ -54,16 +54,16 @@ class SplitterNet(pl.LightningModule):
         z = torch.cat([z1, z2], dim=1)
         x_hat = self.decoder(z)
         
-        reconstruction = nn.functional.mse_loss(x, x_hat, reduction='sum')
+        reconstruction = nn.functional.l1_loss(x, x_hat, reduction='sum')
         
-        out = self.content_encoder(x_hat)
+        out = self.attribute_encoder(x_hat)
         mu, log_var = out.chunk(2, dim=1)
         
         eps = torch.randn_like(torch.exp(log_var))
-        z1_hat = mu + torch.exp(log_var / 2) * eps
-        z1_reconstruction = nn.functional.mse_loss(z1, z1_hat, reduction='sum')
+        z2_hat = mu + torch.exp(log_var / 2) * eps
+        z2_reconstruction = nn.functional.mse_loss(z2, z2_hat, reduction='sum')
         
-        loss = [reconstruction, z1_reconstruction, content_dis, attribute_dis, content_kl, attribute_kl]
+        loss = [reconstruction, z2_reconstruction, content_dis, attribute_dis, content_kl, attribute_kl]
 
         
         return loss
@@ -99,10 +99,10 @@ class SplitterNet(pl.LightningModule):
             loss = self.dis_loss(x, y, dis_idx=optimizer_idx)
         
         if optimizer_idx==2:
-            reconstruction, z1_reconstruction, content_dis, attribute_dis, content_kl, attribute_kl= self.gen_loss(x, y)
-            loss = self.h[0]*reconstruction + self.h[1]*z1_reconstruction + self.h[2]*content_dis + self.h[3]*attribute_dis + self.h[4]*content_kl + self.h[5]*attribute_kl
+            reconstruction, z2_reconstruction, content_dis, attribute_dis, content_kl, attribute_kl= self.gen_loss(x, y)
+            loss = self.h[0]*reconstruction + self.h[1]*z2_reconstruction + self.h[2]*content_dis + self.h[3]*attribute_dis + self.h[4]*content_kl + self.h[5]*attribute_kl
             self.log("reconstruction", reconstruction)
-            self.log("z1_reconstruction", z1_reconstruction)
+            self.log("z2_reconstruction", z2_reconstruction)
             self.log("content_dis", content_dis)
             self.log("attribute_dis", attribute_dis)
             self.log("content_kl", content_kl)
@@ -113,7 +113,7 @@ class SplitterNet(pl.LightningModule):
     # define valid loop
     def validation_step(self, batch, batch_idx):
         x, y = batch[0], batch[1].float()
-        reconstruction, z1_reconstruction, content_dis, attribute_dis, content_kl, attribute_kl= self.gen_loss(x, y)
+        reconstruction, z2_reconstruction, content_dis, attribute_dis, content_kl, attribute_kl = self.gen_loss(x, y)
         loss = self.h[0]*reconstruction #+ self.h[1]*z1_reconstruction + self.h[2]*content_dis + self.h[3]*attribute_dis + self.h[4]*content_kl + self.h[5]*attribute_kl
         self.log("val_loss", loss)
     
@@ -142,10 +142,10 @@ class SplitterNet(pl.LightningModule):
         
 
     def configure_optimizers(self):
-        Dc_opt = torch.optim.Adam(self.content_discriminator.parameters(), lr=self.Dc_lr)
-        Da_opt = torch.optim.Adam(self.attribute_discriminator.parameters(), lr=self.Da_lr)
+        Dc_opt = torch.optim.AdamW(self.content_discriminator.parameters(), lr=self.Dc_lr)
+        Da_opt = torch.optim.AdamW(self.attribute_discriminator.parameters(), lr=self.Da_lr)
         params = [self.content_encoder.parameters(), self.attribute_encoder.parameters(), self.decoder.parameters()]
-        G_opt = Dc_opt = torch.optim.Adam(itertools.chain(*params), lr=self.G_lr)
+        G_opt = torch.optim.AdamW(itertools.chain(*params), lr=self.G_lr)
         
         #Dc_sch = torch.optim.lr_scheduler.LinearLR(Dc_opt, start_factor=self.Dc_lr, end_factor=1e-6, total_iters=1000)
         #Da_sch = torch.optim.lr_scheduler.LinearLR(Da_opt, start_factor=self.Da_lr, end_factor=1e-6, total_iters=1000)
