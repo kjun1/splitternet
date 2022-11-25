@@ -4,3 +4,8 @@ logs/
 __pycache__/
 core
 melceps
+crosslogs/
+*.zip
+images/
+*melceps/
+world/

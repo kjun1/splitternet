@@ -1,17 +1,24 @@
 from torch import nn
+import pytorch_lightning as pl
+from pytorch_lightning.utilities.parsing import AttributeDict
 import math
 
-# conv p = math.ceil((k-s)/2)
+# conv p = (k-s)//2
 # tconv op 基本1
 
-class AttributeEncoder(nn.Module):
+class AttributeEncoder(pl.LightningModule):
     def __init__(self, args=None):
         super().__init__()
         
-        layer1_inchannels = 1
-        layer1_kernel_size = (1, 9)
-        layer1_stride = (1, 1)
-        layer1_padding =  (math.ceil((layer1_kernel_size[0]-layer1_stride[0])/2), math.ceil((layer1_kernel_size[1]-layer1_stride[1])/2))
+        params = AttributeDict()
+        params.update(layer1=AttributeDict())
+        params.layer1.update(channels=1,
+                             kernel_size=(1, 9),
+                             stride=(1, 1),
+                             padding=(0, 4)
+                            )
+        
+        self.save_hyperparameters(params)
         
         layer2_inchannels = 8
         layer2_kernel_size = (1, 9)
@@ -38,11 +45,11 @@ class AttributeEncoder(nn.Module):
         
         self.lr = nn.GLU(dim=1)
         self.conv1 = nn.Conv2d(
-            in_channels=layer1_inchannels,
+            in_channels=params.layer1.channels,
             out_channels=layer2_inchannels*2,
-            kernel_size=layer1_kernel_size,
-            stride=layer1_stride,
-            padding=layer1_padding,
+            kernel_size=params.layer1.kernel_size,
+            stride=params.layer1.stride,
+            padding=params.layer1.padding,
             bias=False,
             padding_mode='zeros',
             )
