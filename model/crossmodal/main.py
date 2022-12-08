@@ -148,13 +148,13 @@ params['VOICE_ENC_CONV7_STRIDE'] = (1, 1)
 for i in range(1, params['VOICE_ENC_NUM_LAYERS']+1):
     params[f'VOICE_ENC_CONV{i}_PADDING'] = tuple([math.floor((params[f'VOICE_ENC_CONV{i}_KERNEL'][j]-params[f'VOICE_ENC_CONV{i}_STRIDE'][j])/2) for j in range(2)])
     
-params["LAMBDA1"] = 1
+params["LAMBDA1"] = 0.01
 params["LAMBDA2"] = 1
-params["LAMBDA3"] = 0.4
-params["LAMBDA4"] = 0.5
+params["LAMBDA3"] = 0.001
+params["LAMBDA4"] = 0.01
 params["LAMBDA5"] = 1
     
-params["LR"] = 1e-3
+params["LR"] = 1e-5
     
     
 class GLU(nn.Module):
@@ -213,9 +213,7 @@ class UttrEncoder(pl.LightningModule):
             x2 = self.model[f'bn{i}b'](x1)
             x = self.model['lr'](x1, x2)
         x = self.model[f'conv{NUM_LAYERS}'](x)
-        mean, log_var = torch.chunk(x, 2, dim=1)
-        log_var = torch.sigmoid(log_var)
-        return mean, log_var
+        return x
     
     
     def test_input(self):
@@ -223,7 +221,7 @@ class UttrEncoder(pl.LightningModule):
         x = torch.ones(64, 1, 36, 40)
         print(x.shape)
         print("encoder out mean_shape")
-        print(self.forward(x)[0].shape)
+        print(self.forward(x).shape)
 
         
 class UttrDecoder(pl.LightningModule):
@@ -280,9 +278,7 @@ class UttrDecoder(pl.LightningModule):
             c = y.repeat(1, 1, x.shape[2]//y.shape[2], x.shape[3]//y.shape[3])
             z = torch.cat((x, c), dim=1)
         x = self.model[f'deconv{NUM_LAYERS}'](z)
-        mean, log_var = torch.chunk(x, 2, dim=1)
-        log_var = torch.sigmoid(log_var)
-        return mean, log_var
+        return x
     
     
     def test_input(self):
@@ -292,7 +288,7 @@ class UttrDecoder(pl.LightningModule):
         y = torch.ones(64, 8, 1, 1)
         print(y.shape)
         print("decoder out mean_shape")
-        print(self.forward(x, y)[0].shape)
+        print(self.forward(x, y).shape)
         
 
 class FaceEncoder(pl.LightningModule):
@@ -335,9 +331,7 @@ class FaceEncoder(pl.LightningModule):
             x = self.model['lr'](x)
         
         x = x.unsqueeze(-1).unsqueeze(-1)
-        mean, log_var = torch.chunk(x, 2, dim=1)
-        log_var = torch.sigmoid(log_var)
-        return mean, log_var
+        return x
     
     
     def test_input(self):
@@ -345,7 +339,7 @@ class FaceEncoder(pl.LightningModule):
         x = torch.ones(64, 3, 32, 32)
         print(x.shape)
         print("encoder out mean_shape")
-        print(self.forward(x)[0].shape)
+        print(self.forward(x).shape)
         
 
 class FaceDecoder(pl.LightningModule):
@@ -402,9 +396,7 @@ class FaceDecoder(pl.LightningModule):
         i = params['FACE_DEC_CONV_LAYERS']
         x = self.model[f'conv{i}'](x)
             
-        mean, log_var = torch.chunk(x, 2, dim=1)
-        log_var = torch.sigmoid(log_var)
-        return mean, log_var
+        return x
     
     
     def test_input(self):
@@ -412,7 +404,7 @@ class FaceDecoder(pl.LightningModule):
         x = torch.ones(64, 8)
         print(x.shape)
         print("decoder out mean_shape")
-        print(self.forward(x)[0].shape)
+        print(self.forward(x).shape)
 
         
 class VoiceEncoder(pl.LightningModule):
@@ -464,9 +456,7 @@ class VoiceEncoder(pl.LightningModule):
             x2 = self.model[f'bn{i}b'](x1)
             x = self.model['lr'](x1, x2)
         x = self.model[f'conv{NUM_LAYERS}'](x)
-        mean, log_var = torch.chunk(x, 2, dim=1)
-        log_var = torch.sigmoid(log_var)
-        return mean, log_var
+        return x
     
     
     def test_input(self):
@@ -474,8 +464,100 @@ class VoiceEncoder(pl.LightningModule):
         x = torch.ones(64, 1, 36, 40)
         print(x.shape)
         print("encoder out mean_shape")
-        print(self.forward(x)[0].shape)
+        print(self.forward(x).shape)
 
+
+params['NUM_EMBEDDINGS'] = 16
+params['EMBEDDINGS_DIM'] = 8
+params['BETA'] = 0.25
+        
+class VectorQuantizer(pl.LightningModule):
+    """
+    Discretization bottleneck part of the VQ-VAE.
+    Inputs:
+    - n_e : number of embeddings
+    - e_dim : dimension of embedding
+    - beta : commitment cost used in loss term, beta * ||z_e(x)-sg[e]||^2
+    """
+
+    def __init__(self, params):
+        super().__init__()
+        self.save_hyperparameters(params)
+        
+        self.n_e = self.hparams['NUM_EMBEDDINGS']
+        self.e_dim = self.hparams['EMBEDDINGS_DIM']
+        self.beta = self.hparams['BETA']
+
+        self.embedding = nn.Embedding(self.n_e, self.e_dim)
+        self.embedding.weight.data.uniform_(-1.0 / self.n_e, 1.0 / self.n_e)
+    
+    def forward(self, z):
+         # reshape z -> (batch, height, width, channel) and flatten
+        z = z.permute(0, 2, 3, 1).contiguous()
+        z_flattened = z.view(-1, self.e_dim)
+        # distances from z to embeddings e_j (z - e)^2 = z^2 + e^2 - 2 e * z
+
+        d = torch.sum(z_flattened ** 2, dim=1, keepdim=True) + \
+            torch.sum(self.embedding.weight**2, dim=1) - 2 * \
+            torch.matmul(z_flattened, self.embedding.weight.t())
+
+        # find closest encodings
+        min_encoding_indices = torch.argmin(d, dim=1).unsqueeze(1)
+        min_encodings = torch.zeros(
+            min_encoding_indices.shape[0], self.n_e).to(self.device)
+        min_encodings.scatter_(1, min_encoding_indices, 1)
+
+        # get quantized latent vectors
+        z_q = torch.matmul(min_encodings, self.embedding.weight).view(z.shape)
+        
+        return z_q.permute(0, 3, 1, 2).contiguous()
+
+
+    def loss(self, z):
+        """
+        Inputs the output of the encoder network z and maps it to a discrete 
+        one-hot vector that is the index of the closest embedding vector e_j
+        z (continuous) -> z_q (discrete)
+        z.shape = (batch, channel, height, width)
+        quantization pipeline:
+            1. get encoder input (B,C,H,W)
+            2. flatten input to (B*H*W,C)
+        """
+        # reshape z -> (batch, height, width, channel) and flatten
+        z = z.permute(0, 2, 3, 1).contiguous()
+        z_flattened = z.view(-1, self.e_dim)
+        # distances from z to embeddings e_j (z - e)^2 = z^2 + e^2 - 2 e * z
+
+        d = torch.sum(z_flattened ** 2, dim=1, keepdim=True) + \
+            torch.sum(self.embedding.weight**2, dim=1) - 2 * \
+            torch.matmul(z_flattened, self.embedding.weight.t())
+
+        # find closest encodings
+        min_encoding_indices = torch.argmin(d, dim=1).unsqueeze(1)
+        min_encodings = torch.zeros(
+            min_encoding_indices.shape[0], self.n_e).to(self.device)
+        min_encodings.scatter_(1, min_encoding_indices, 1)
+
+        # get quantized latent vectors
+        z_q = torch.matmul(min_encodings, self.embedding.weight).view(z.shape)
+
+        # compute loss for embedding
+        loss = torch.sum((z_q.detach()-z)**2) + self.beta * \
+            torch.sum((z_q - z.detach()) ** 2)
+
+        # preserve gradients
+        z_q = z + (z_q - z).detach()
+
+        # perplexity
+        e_mean = torch.mean(min_encodings, dim=0)
+        perplexity = torch.exp(-torch.sum(e_mean * torch.log(e_mean + 1e-10)))
+
+        # reshape back to match original input shape
+        z_q = z_q.permute(0, 3, 1, 2).contiguous()
+
+        return loss, z_q, perplexity, min_encodings, min_encoding_indices
+        
+        
         
 class Model(pl.LightningModule):
     def __init__(self, params):
@@ -488,47 +570,42 @@ class Model(pl.LightningModule):
         self.fd = FaceDecoder(self.hparams)
         
     def forward(self, x, y):
-        z = self.ue(x)
-        c = self.fe(y)
-        x = self.ud(z[0], c[0])
-        return x[0]
+        z, _ = torch.chunk(self.ue(x), 2, dim=1)
+        c, _ = torch.chunk(self.fe(y), 2, dim=1)
+        x, _ = torch.chunk(self.ud(z, c), 2, dim=1)
+        return x
     
     def rc_image(self, y):
-        c = self.fe(y)
-        y = self.fd(c[0].squeeze(-1).squeeze(-1))
-        return y[0].to(torch.uint8).squeeze(0)
-    
-    def speech_to_face(self, x, y):
-        x_hat = self.forward(x, y)
-        c_hat = self.ve(x_hat)
-        c_hat = torch.tensor_split(c_hat[0], c_hat[0].shape[-1], dim=-1)
-        y_hat = self.fd(c_hat[0].squeeze(-1).squeeze(-1))
-        return y_hat[0].to(torch.uint8).squeeze(0)
+        c, _ = torch.chunk(self.fe(y), 2, dim=1)
+        y, _ = torch.chunk(self.fd(c.squeeze(-1).squeeze(-1)), 2, dim=1)
+        return y.to(torch.uint8).squeeze(0)
     
     def loss_function(self, x, y):
-        mu, log_var = self.ue(x)
+        mu, log_var = torch.chunk(self.ue(x), 2, dim=1)
+        log_var = torch.sigmoid(log_var)
         uttr_kl = self._KL_divergence(mu, log_var)
         z = self._sample_z(mu, log_var)
         
-        mu, log_var = self.fe(y)
+        mu, log_var = torch.chunk(self.fe(y), 2, dim=1)
+        log_var = torch.sigmoid(log_var)
         face_kl = self._KL_divergence(mu, log_var)
         c = self._sample_z(mu, log_var)
     
-        mu, log_var = self.ud(z, c)
+        mu, log_var = torch.chunk(self.ud(z, c), 2, dim=1)
+        log_var = torch.sigmoid(log_var)
         uttr_rc = self._reconstruction(x, mu, log_var)
         x_hat = self._sample_z(mu, log_var)
         
-        mu, log_var = self.fd(c.squeeze(-1).squeeze(-1))
+        mu, log_var = torch.chunk(self.fd(c.squeeze(-1).squeeze(-1)), 2, dim=1)
+        log_var = torch.sigmoid(log_var)
         face_rc = self._reconstruction(y, mu, log_var)
         
-        mu, log_var = self.ve(x_hat)
-        c_hat = self._sample_z(mu, log_var)
-        
+        mu, log_var = torch.chunk(self.ve(x_hat), 2, dim=1)
+        log_var = torch.sigmoid(log_var)
         voice_rc = []
         
-        for i in torch.tensor_split(c_hat, c_hat.shape[-1], dim=-1):
-            mu, log_var = self.fd(i.squeeze(-1).squeeze(-1))
-            voice_rc.append(self._reconstruction(y, mu, log_var))
+        for i, j in zip(torch.tensor_split(mu, mu.shape[-1], dim=-1),torch.tensor_split(log_var, log_var.shape[-1], dim=-1)):
+            voice_rc.append(self._reconstruction(c, i, j))
             
         voice_rc = torch.sum(torch.stack(voice_rc)).to(self.device)/len(voice_rc)
         
@@ -603,7 +680,135 @@ class Model(pl.LightningModule):
         opt = torch.optim.AdamW(self.parameters(), lr=self.hparams["LR"])
 
         return [opt], []
+
+    
+params['FACE_ENC_LINEAR3_CHANNELS'] = 8
+class VQModel(pl.LightningModule):
+    def __init__(self, params):
+        super().__init__()
+        self.save_hyperparameters(params)
+        self.ue = UttrEncoder(self.hparams)
+        self.fe = FaceEncoder(self.hparams)
+        self.ve = VoiceEncoder(self.hparams)
+        self.ud = UttrDecoder(self.hparams)
+        self.fd = FaceDecoder(self.hparams)
+        
+        self.vq = VectorQuantizer(self.hparams)
+        
+    def forward(self, x, y):
+        z, _ = torch.chunk(self.ue(x), 2, dim=1)
+        c_e = self.fe(y)
+        c_q = self.vq(c_e)
+        x, _ = torch.chunk(self.ud(z, c_q), 2, dim=1)
+        return x
+    
+    def rc_image(self, y):
+        c_e = self.fe(y)
+        c_q = self.vq(c_e)
+        print(c_q)
+        y, _ = torch.chunk(self.fd(c_q.squeeze(-1).squeeze(-1)), 2, dim=1)
+        return y.to(torch.uint8).squeeze(0)
+    
+    def loss_function(self, x, y):
+        mu, log_var = torch.chunk(self.ue(x), 2, dim=1)
+        log_var = torch.sigmoid(log_var)
+        uttr_kl = self._KL_divergence(mu, log_var)
+        z = self._sample_z(mu, log_var)
+        
+        c_e = self.fe(y)
+        vq_loss, c_q, _, _, _  = self.vq.loss(c_e)   
+    
+        mu, log_var = torch.chunk(self.ud(z, c_q), 2, dim=1)
+        log_var = torch.sigmoid(log_var)
+        uttr_rc = self._reconstruction(x, mu, log_var)
+        x_hat = self._sample_z(mu, log_var)
+        
+        mu, log_var = torch.chunk(self.fd(c_q.squeeze(-1).squeeze(-1)), 2, dim=1)
+        log_var = torch.sigmoid(log_var)
+        face_rc = self._reconstruction(y, mu, log_var)
+        
+        mu, log_var = torch.chunk(self.ve(x_hat), 2, dim=1)
+        log_var = torch.sigmoid(log_var)
+        voice_rc = []
+        
+        for i, j in zip(torch.tensor_split(mu, mu.shape[-1], dim=-1),torch.tensor_split(log_var, log_var.shape[-1], dim=-1)):
+            voice_rc.append(self._reconstruction(c_q, i, j))
+            
+        voice_rc = torch.sum(torch.stack(voice_rc)).to(self.device)/len(voice_rc)
+        
+        return  uttr_rc, face_rc, voice_rc, uttr_kl, vq_loss
+    
+    def training_step(self, batch, batch_idx):
+        x, y = batch[1], batch[0]
+        uttr_rc, face_rc, voice_rc, uttr_kl, vq_loss = self.loss_function(x, y)
+        uttr_loss = self.hparams["LAMBDA1"]*uttr_rc 
+        uttr_loss += self.hparams["LAMBDA4"]*uttr_kl
+        
+        face_loss = self.hparams["LAMBDA2"]*face_rc
+        face_loss += self.hparams["LAMBDA3"]*voice_rc
+        face_loss += self.hparams["LAMBDA5"]*vq_loss
+        
+        loss_schedule = self.current_epoch//200
+        loss = uttr_loss/(2**loss_schedule) + face_loss/(2**loss_schedule)
+        
+        self.log("uttr_rc", uttr_rc)
+        self.log("face_rc", face_rc)
+        self.log("voice_rc", voice_rc)
+        self.log("uttr_kl", uttr_kl)
+        self.log("vq_loss", vq_loss)
+        
+        self.log("train_loss", loss)
+        
+        return loss
+    
+    def validation_step(self, batch, batch_idx):
+        x, y = batch[1], batch[0]
+        uttr_rc, face_rc, voice_rc, uttr_kl, vq_loss = self.loss_function(x, y)
+        loss = self.hparams["LAMBDA1"]*uttr_rc 
+        loss += self.hparams["LAMBDA2"]*face_rc
+        loss += self.hparams["LAMBDA3"]*voice_rc
+        loss += self.hparams["LAMBDA4"]*uttr_kl
+        loss += self.hparams["LAMBDA5"]*vq_loss
+        
+        self.log("val_loss", loss)
+
+        
+    
+    def test_input(self):
+        print("input")
+        x = torch.ones(64, 1, 36, 40)
+        y = torch.ones(64, 3, 32, 32)
+        print(x.shape)
+        print(y.shape)
+        print("encoder out mean_shape")
+        print(self.forward(x, y).shape)
+        
+    def test_loss(self):
+        print("input")
+        x = torch.ones(64, 1, 36, 40)
+        y = torch.ones(64, 3, 32, 32)
+        print(x.shape)
+        print(y.shape)
+        print("output loss_function")
+        print(self.loss_function(x, y))
+        
+    def _KL_divergence(self, mu, log_var):
+        return -0.5 * torch.sum(1 + log_var - mu.pow(2)  - log_var.exp())
+    
+    def _reconstruction(self, x, mu, log_var):
+        return torch.sum(log_var + torch.square(x-mu)/log_var.exp())*0.5
+    
+    def _sample_z(self, mu, log_var):
+        epsilon = torch.randn(mu.shape, device=self.device)
+        return mu + log_var.exp() * epsilon
+     
+    
+    def configure_optimizers(self):
+        opt = torch.optim.AdamW(self.parameters(), lr=self.hparams["LR"])
+
+        return [opt], []
+
     
 if __name__ == "__main__":
-    model = Model(params)
+    model = VQModel(params)
     model.test_loss()

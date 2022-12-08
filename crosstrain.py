@@ -5,11 +5,11 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 from sklearn.model_selection import train_test_split
 
-from model.crossmodal.main import Model, params
+from model.crossmodal.main import VQModel, params
 from data.datamodule import CrossJVSDataModule
 
 device = 'cuda:0'
-model = Model(params)# .load_from_checkpoint("crosslogs/lightning_logs/version_10/checkpoints/last.ckpt")
+model = VQModel(params)# .load_from_checkpoint("crosslogs/lightning_logs/version_10/checkpoints/last.ckpt")
 
 
 checkpoint_callback = ModelCheckpoint(
