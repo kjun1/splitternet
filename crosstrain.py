@@ -5,7 +5,8 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 from sklearn.model_selection import train_test_split
 
-from model.crossmodal.main import VQModel, params
+from model.crossmodal.main import VQModel
+from model.crossmodal.vq.params import params
 from data.datamodule import CrossJVSDataModule
 
 device = 'cuda:0'

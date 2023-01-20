@@ -62,6 +62,7 @@ class JVSDataset(Dataset):
         self.n_mels = n_mels
         self.chunk = chunk
         self.width = width
+        self.max_files = 80
         
         self.data = list(self.extract_data(root))
         
@@ -73,8 +74,8 @@ class JVSDataset(Dataset):
         
     def extract_data(self, root):
         for speaker in self.speakers:
-            transcriptions = nnmnkwii.datasets.jvs.TranscriptionDataSource(root, categories=["parallel"], speakers=[speaker], max_files=100)
-            wav_paths = nnmnkwii.datasets.jvs.WavFileDataSource(root, categories=["parallel"], speakers=[speaker], max_files=100)
+            transcriptions = nnmnkwii.datasets.jvs.TranscriptionDataSource(root, categories=["parallel"], speakers=[speaker], max_files=self.max_files)
+            wav_paths = nnmnkwii.datasets.jvs.WavFileDataSource(root, categories=["parallel"], speakers=[speaker], max_files=self.max_files)
             wave = self.extract_wave(wav_paths, transcriptions)
             transforms = torch.nn.Sequential(
                     torchaudio.transforms.Spectrogram(
@@ -125,7 +126,7 @@ class JVSDataset(Dataset):
                 speaker_index = self.speakers.index(speaker)
                 speaker_one_hot = torch.nn.functional.one_hot(torch.tensor(speaker_index), num_classes=len(self.speakers))
                     
-                yield f0, sp, ap, speaker_one_hot
+                yield f0, sp, ap, speaker_one_hot, speaker_index
     
     def extract_wave(self, wav_paths, transcriptions):
         xx = torch.tensor([[]])
@@ -137,10 +138,11 @@ class JVSDataset(Dataset):
 
     
 class McJVSDataset(Dataset):
-    def __init__(self, root="36_40_melceps"):
+    def __init__(self, root="36_40_melceps", dis=[0,1,2,3]):
         super().__init__()
         
         self.fs = 24000
+        self.dis = dis
         self.data = list(self.extract_data(root))
         
         
@@ -152,7 +154,9 @@ class McJVSDataset(Dataset):
     
     def extract_data(self, root):
         for i in os.listdir(root):
-            yield torch.load(os.path.join(root, i))
+            data = torch.load(os.path.join(root, i))
+            if not torch.argmax(data[1]) in self.dis:
+                yield data
 
 
 class ImageDataset(Dataset):

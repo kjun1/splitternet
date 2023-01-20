@@ -5,158 +5,6 @@ import pytorch_lightning as pl
 
 
 
-params = dict()
-
-# UttrEnc setting
-params['UTTR_ENC_NUM_LAYERS'] = 4
-
-params['UTTR_ENC_CONV1_CHANNELS'] = 1
-params['UTTR_ENC_CONV2_CHANNELS'] = 16
-params['UTTR_ENC_CONV3_CHANNELS']= 32
-params['UTTR_ENC_CONV4_CHANNELS'] = 32
-params['UTTR_ENC_CONV5_CHANNELS'] = 16
-
-params['UTTR_ENC_CONV1_KERNEL'] = (3, 9)
-params['UTTR_ENC_CONV2_KERNEL'] = (4, 8)
-params['UTTR_ENC_CONV3_KERNEL'] = (4, 8)
-params['UTTR_ENC_CONV4_KERNEL'] = (9, 5)
-
-params['UTTR_ENC_CONV1_STRIDE'] = (1, 1)
-params['UTTR_ENC_CONV2_STRIDE'] = (2, 2)
-params['UTTR_ENC_CONV3_STRIDE'] = (2, 2)
-params['UTTR_ENC_CONV4_STRIDE'] = (9, 1)
-
-for i in range(1, params['UTTR_ENC_NUM_LAYERS']+1):
-    params[f'UTTR_ENC_CONV{i}_PADDING'] = tuple([math.floor((params[f'UTTR_ENC_CONV{i}_KERNEL'][j]-params[f'UTTR_ENC_CONV{i}_STRIDE'][j])/2) for j in range(2)])
-    
-# UttrDec setting
-params['UTTR_DEC_NUM_LAYERS'] = 4
-
-params['UTTR_DEC_CONV1_CHANNELS'] = 8
-params['UTTR_DEC_CONV2_CHANNELS'] = 16
-params['UTTR_DEC_CONV3_CHANNELS']= 16
-params['UTTR_DEC_CONV4_CHANNELS'] = 8
-params['UTTR_DEC_CONV5_CHANNELS'] = 2
-
-params['UTTR_DEC_CONV1_KERNEL'] = (9, 5)
-params['UTTR_DEC_CONV2_KERNEL'] = (4, 8)
-params['UTTR_DEC_CONV3_KERNEL'] = (4, 8)
-params['UTTR_DEC_CONV4_KERNEL'] = (3, 9)
-
-params['UTTR_DEC_CONV1_STRIDE'] = (9, 1)
-params['UTTR_DEC_CONV2_STRIDE'] = (2, 2)
-params['UTTR_DEC_CONV3_STRIDE'] = (2, 2)
-params['UTTR_DEC_CONV4_STRIDE'] = (1, 1)
-
-for i in range(1, params['UTTR_DEC_NUM_LAYERS']+1):
-    params[f'UTTR_DEC_CONV{i}_PADDING'] = tuple([math.ceil((params[f'UTTR_DEC_CONV{i}_KERNEL'][j]-params[f'UTTR_DEC_CONV{i}_STRIDE'][j])/2) for j in range(2)])
-    params[f'UTTR_DEC_CONV{i}_OUT_PADDING'] = tuple([(params[f'UTTR_DEC_CONV{i}_KERNEL'][j]-params[f'UTTR_DEC_CONV{i}_STRIDE'][j])%2 for j in range(2)])
-    
-# FaceEnc setting
-params['FACE_ENC_CONV_LAYERS'] = 5
-params['FACE_ENC_LINEAR_LAYERS'] = 2
-
-params['FACE_ENC_CONV1_CHANNELS'] = 3
-params['FACE_ENC_CONV2_CHANNELS'] = 32
-params['FACE_ENC_CONV3_CHANNELS']= 64
-params['FACE_ENC_CONV4_CHANNELS'] = 128
-params['FACE_ENC_CONV5_CHANNELS'] = 128
-params['FACE_ENC_CONV6_CHANNELS'] = 256
-
-params['FACE_ENC_LINEAR1_CHANNELS'] = 256
-params['FACE_ENC_LINEAR2_CHANNELS'] = 16
-params['FACE_ENC_LINEAR3_CHANNELS'] = 16
-
-params['FACE_ENC_CONV1_KERNEL'] = (6, 6)
-params['FACE_ENC_CONV2_KERNEL'] = (6, 6)
-params['FACE_ENC_CONV3_KERNEL'] = (4, 4)
-params['FACE_ENC_CONV4_KERNEL'] = (4, 4)
-params['FACE_ENC_CONV5_KERNEL'] = (2, 2)
-
-params['FACE_ENC_CONV1_STRIDE'] = (2, 2)
-params['FACE_ENC_CONV2_STRIDE'] = (2, 2)
-params['FACE_ENC_CONV3_STRIDE'] = (2, 2)
-params['FACE_ENC_CONV4_STRIDE'] = (2, 2)
-params['FACE_ENC_CONV5_STRIDE'] = (2, 2)
-
-
-
-for i in range(1, params['FACE_ENC_CONV_LAYERS']+1):
-    params[f'FACE_ENC_CONV{i}_PADDING'] = tuple([math.floor((params[f'FACE_ENC_CONV{i}_KERNEL'][j]-params[f'FACE_ENC_CONV{i}_STRIDE'][j])/2) for j in range(2)])
-    
-# FaceDec setting
-params['FACE_DEC_LINEAR_LAYERS'] = 2
-params['FACE_DEC_CONV_LAYERS'] = 5
-
-params['FACE_DEC_LINEAR1_CHANNELS'] = 8
-params['FACE_DEC_LINEAR2_CHANNELS'] = 128
-params['FACE_DEC_LINEAR3_CHANNELS'] = 2048
-
-params['FACE_DEC_CONV1_CHANNELS']= 128
-params['FACE_DEC_CONV2_CHANNELS'] = 128
-params['FACE_DEC_CONV3_CHANNELS'] = 64
-params['FACE_DEC_CONV4_CHANNELS'] = 32
-params['FACE_DEC_CONV5_CHANNELS'] = 6
-params['FACE_DEC_CONV6_CHANNELS'] = 6
-
-params['FACE_DEC_CONV1_KERNEL'] = (3, 3)
-params['FACE_DEC_CONV2_KERNEL'] = (6, 6)
-params['FACE_DEC_CONV3_KERNEL'] = (6, 6)
-params['FACE_DEC_CONV4_KERNEL'] = (6, 6)
-params['FACE_DEC_CONV5_KERNEL'] = (5, 5)
-
-params['FACE_DEC_CONV1_STRIDE'] = (2, 2)
-params['FACE_DEC_CONV2_STRIDE'] = (2, 2)
-params['FACE_DEC_CONV3_STRIDE'] = (2, 2)
-params['FACE_DEC_CONV4_STRIDE'] = (2, 2)
-params['FACE_DEC_CONV5_STRIDE'] = (2, 2) # 元論文の実装と違う
-
-
-
-for i in range(1, params['FACE_DEC_CONV_LAYERS']+1):
-    params[f'FACE_DEC_CONV{i}_PADDING'] = tuple([math.ceil((params[f'FACE_DEC_CONV{i}_KERNEL'][j]-params[f'FACE_DEC_CONV{i}_STRIDE'][j])/2) for j in range(2)])
-    params[f'FACE_DEC_CONV{i}_OUT_PADDING'] = tuple([(params[f'FACE_DEC_CONV{i}_KERNEL'][j]-params[f'FACE_DEC_CONV{i}_STRIDE'][j])%2 for j in range(2)])
-    
-# VoiceEnc setting
-params['VOICE_ENC_NUM_LAYERS'] = 7
-
-params['VOICE_ENC_CONV1_CHANNELS'] = 1
-params['VOICE_ENC_CONV2_CHANNELS'] = 32
-params['VOICE_ENC_CONV3_CHANNELS']= 64
-params['VOICE_ENC_CONV4_CHANNELS'] = 128
-params['VOICE_ENC_CONV5_CHANNELS'] = 128
-params['VOICE_ENC_CONV6_CHANNELS'] = 128
-params['VOICE_ENC_CONV7_CHANNELS'] = 64
-params['VOICE_ENC_CONV8_CHANNELS'] = 16
-
-params['VOICE_ENC_CONV1_KERNEL'] = (3, 9)
-params['VOICE_ENC_CONV2_KERNEL'] = (4, 8)
-params['VOICE_ENC_CONV3_KERNEL'] = (4, 8)
-params['VOICE_ENC_CONV4_KERNEL'] = (4, 8)
-params['VOICE_ENC_CONV5_KERNEL'] = (4, 5)
-params['VOICE_ENC_CONV6_KERNEL'] = (1, 5)
-params['VOICE_ENC_CONV7_KERNEL'] = (1, 5)
-
-params['VOICE_ENC_CONV1_STRIDE'] = (1, 1)
-params['VOICE_ENC_CONV2_STRIDE'] = (2, 2)
-params['VOICE_ENC_CONV3_STRIDE'] = (2, 2)
-params['VOICE_ENC_CONV4_STRIDE'] = (2, 2)
-params['VOICE_ENC_CONV5_STRIDE'] = (4, 1)
-params['VOICE_ENC_CONV6_STRIDE'] = (1, 1)
-params['VOICE_ENC_CONV7_STRIDE'] = (1, 1)
-
-for i in range(1, params['VOICE_ENC_NUM_LAYERS']+1):
-    params[f'VOICE_ENC_CONV{i}_PADDING'] = tuple([math.floor((params[f'VOICE_ENC_CONV{i}_KERNEL'][j]-params[f'VOICE_ENC_CONV{i}_STRIDE'][j])/2) for j in range(2)])
-    
-params["LAMBDA1"] = 0.01
-params["LAMBDA2"] = 1
-params["LAMBDA3"] = 0.001
-params["LAMBDA4"] = 0.01
-params["LAMBDA5"] = 1
-    
-params["LR"] = 1e-5
-    
-    
 class GLU(nn.Module):
     def __init__(self):
         super().__init__()
@@ -382,18 +230,18 @@ class FaceDecoder(pl.LightningModule):
             
     
     def forward(self, x):
-        for i in range(1, params['FACE_DEC_LINEAR_LAYERS']+1):
+        for i in range(1, self.hparams['FACE_DEC_LINEAR_LAYERS']+1):
             x = self.model[f'linear{i}'](x)
             x = self.model['lr'](x)
-        h = int(math.sqrt(params[f'FACE_DEC_LINEAR{params["FACE_DEC_LINEAR_LAYERS"]+1}_CHANNELS'] / params[f'FACE_DEC_CONV1_CHANNELS']))
-        x = x.view(x.shape[0], params[f'FACE_DEC_CONV1_CHANNELS'], h, h)
-        for i in range(1, params['FACE_DEC_CONV_LAYERS']):
+        h = int(math.sqrt(self.hparams[f'FACE_DEC_LINEAR{self.hparams["FACE_DEC_LINEAR_LAYERS"]+1}_CHANNELS'] / self.hparams[f'FACE_DEC_CONV1_CHANNELS']))
+        x = x.view(x.shape[0], self.hparams[f'FACE_DEC_CONV1_CHANNELS'], h, h)
+        for i in range(1, self.hparams['FACE_DEC_CONV_LAYERS']):
             x = self.model[f'deconv{i}'](x)
-            if i != params['FACE_DEC_CONV_LAYERS']+1:
+            if i != self.hparams['FACE_DEC_CONV_LAYERS']+1:
                 x = self.model[f'bn{i}'](x)
             x = self.model['lr'](x)
         
-        i = params['FACE_DEC_CONV_LAYERS']
+        i = self.hparams['FACE_DEC_CONV_LAYERS']
         x = self.model[f'conv{i}'](x)
             
         return x
@@ -446,6 +294,8 @@ class VoiceEncoder(pl.LightningModule):
             self.hparams[f'VOICE_ENC_CONV{NUM_LAYERS}_PADDING'],
             bias=False, padding_mode='replicate'
         )
+        
+        
     
     def forward(self, x):
         NUM_LAYERS = self.hparams['VOICE_ENC_NUM_LAYERS']
@@ -466,10 +316,84 @@ class VoiceEncoder(pl.LightningModule):
         print("encoder out mean_shape")
         print(self.forward(x).shape)
 
+class VoiceDiscriminator(pl.LightningModule):
+    def __init__(self, params):
+        super().__init__()
+        self.model = nn.ModuleDict()
+        self.save_hyperparameters(params)
+        
+        self.model['lr'] = GLU()
+        self.model['lr2'] = nn.LeakyReLU(negative_slope=0.02, inplace=False)
+        
+        CONV_LAYERS = self.hparams['VOICE_DIS_CONV_LAYERS']
+        
+        for i in range(1, CONV_LAYERS):
+            self.model[f'conv{i}a'] = nn.Conv2d(
+                self.hparams[f'VOICE_DIS_CONV{i}_CHANNELS'],
+                self.hparams[f'VOICE_DIS_CONV{i+1}_CHANNELS'],
+                self.hparams[f'VOICE_DIS_CONV{i}_KERNEL'],
+                self.hparams[f'VOICE_DIS_CONV{i}_STRIDE'],
+                self.hparams[f'VOICE_DIS_CONV{i}_PADDING'],
+                bias=False, padding_mode='replicate'
+            )
+            self.model[f'bn{i}a'] = nn.BatchNorm2d(self.hparams[f'VOICE_DIS_CONV{i+1}_CHANNELS'])
+            
+            self.model[f'conv{i}b'] = nn.Conv2d(
+                self.hparams[f'VOICE_DIS_CONV{i}_CHANNELS'],
+                self.hparams[f'VOICE_DIS_CONV{i+1}_CHANNELS'],
+                self.hparams[f'VOICE_DIS_CONV{i}_KERNEL'],
+                self.hparams[f'VOICE_DIS_CONV{i}_STRIDE'],
+                self.hparams[f'VOICE_DIS_CONV{i}_PADDING'],
+                bias=False, padding_mode='replicate'
+            )
+            self.model[f'bn{i}b'] = nn.BatchNorm2d(self.hparams[f'VOICE_DIS_CONV{i+1}_CHANNELS'])
+            
+        self.model[f'conv{CONV_LAYERS}'] =  nn.Conv2d(
+            self.hparams[f'VOICE_DIS_CONV{CONV_LAYERS}_CHANNELS'],
+            self.hparams[f'VOICE_DIS_CONV{CONV_LAYERS+1}_CHANNELS'],
+            self.hparams[f'VOICE_DIS_CONV{CONV_LAYERS}_KERNEL'],
+            self.hparams[f'VOICE_DIS_CONV{CONV_LAYERS}_STRIDE'],
+            self.hparams[f'VOICE_DIS_CONV{CONV_LAYERS}_PADDING'],
+            bias=False, padding_mode='replicate'
+        )
+        
+        for i in range(1, self.hparams['VOICE_DIS_LINEAR_LAYERS']+1):
+            self.model[f'linear{i}'] = nn.Linear(
+                self.hparams[f'VOICE_DIS_LINEAR{i}_CHANNELS'],
+                self.hparams[f'VOICE_DIS_LINEAR{i+1}_CHANNELS'],
+                bias=False,
+            )
+    
+    def forward(self, x):
+        CONV_LAYERS = self.hparams['VOICE_DIS_CONV_LAYERS']
+        for i in range(1, CONV_LAYERS):
+            x1 = self.model[f'conv{i}a'](x)
+            x1 = self.model[f'bn{i}a'](x1)
+            x2 = self.model[f'conv{i}b'](x)
+            x2 = self.model[f'bn{i}b'](x1)
+            x = self.model['lr'](x1, x2)
+            
+        x = self.model[f'conv{CONV_LAYERS}'](x)
+        x = x.view(x.shape[0], -1)
+        
+        for i in range(1, self.hparams['VOICE_DIS_LINEAR_LAYERS']):
+            x = self.model[f'linear{i}'](x)
+            x = self.model['lr2'](x)
+        
+        x = self.model[f'linear{self.hparams["VOICE_DIS_LINEAR_LAYERS"]}'](x)
+        x = nn.functional.softmax(x, dim=1)
+        
+        return x
+    
+    
+    def test_input(self):
+        print("input")
+        x = torch.ones(64, 1, 36, 40)
+        print(x.shape)
+        print("encoder out mean_shape")
+        print(self.forward(x).shape)
 
-params['NUM_EMBEDDINGS'] = 16
-params['EMBEDDINGS_DIM'] = 8
-params['BETA'] = 0.25
+        
         
 class VectorQuantizer(pl.LightningModule):
     """
@@ -542,8 +466,8 @@ class VectorQuantizer(pl.LightningModule):
         z_q = torch.matmul(min_encodings, self.embedding.weight).view(z.shape)
 
         # compute loss for embedding
-        loss = torch.sum((z_q.detach()-z)**2) + self.beta * \
-            torch.sum((z_q - z.detach()) ** 2)
+        loss = nn.functional.mse_loss(z_q.detach(), z) + self.beta * \
+            nn.functional.mse_loss(z_q, z.detach())
 
         # preserve gradients
         z_q = z + (z_q - z).detach()
@@ -682,14 +606,13 @@ class Model(pl.LightningModule):
         return [opt], []
 
     
-params['FACE_ENC_LINEAR3_CHANNELS'] = 8
 class VQModel(pl.LightningModule):
     def __init__(self, params):
         super().__init__()
         self.save_hyperparameters(params)
         self.ue = UttrEncoder(self.hparams)
         self.fe = FaceEncoder(self.hparams)
-        self.ve = VoiceEncoder(self.hparams)
+        self.vd = VoiceDiscriminator(self.hparams)
         self.ud = UttrDecoder(self.hparams)
         self.fd = FaceDecoder(self.hparams)
         
@@ -705,7 +628,6 @@ class VQModel(pl.LightningModule):
     def rc_image(self, y):
         c_e = self.fe(y)
         c_q = self.vq(c_e)
-        print(c_q)
         y, _ = torch.chunk(self.fd(c_q.squeeze(-1).squeeze(-1)), 2, dim=1)
         return y.to(torch.uint8).squeeze(0)
     
@@ -716,7 +638,7 @@ class VQModel(pl.LightningModule):
         z = self._sample_z(mu, log_var)
         
         c_e = self.fe(y)
-        vq_loss, c_q, _, _, _  = self.vq.loss(c_e)   
+        vq_loss, c_q, perplexity, min_encodings, min_encoding_indices = self.vq.loss(c_e)   
     
         mu, log_var = torch.chunk(self.ud(z, c_q), 2, dim=1)
         log_var = torch.sigmoid(log_var)
@@ -727,14 +649,8 @@ class VQModel(pl.LightningModule):
         log_var = torch.sigmoid(log_var)
         face_rc = self._reconstruction(y, mu, log_var)
         
-        mu, log_var = torch.chunk(self.ve(x_hat), 2, dim=1)
-        log_var = torch.sigmoid(log_var)
-        voice_rc = []
-        
-        for i, j in zip(torch.tensor_split(mu, mu.shape[-1], dim=-1),torch.tensor_split(log_var, log_var.shape[-1], dim=-1)):
-            voice_rc.append(self._reconstruction(c_q, i, j))
-            
-        voice_rc = torch.sum(torch.stack(voice_rc)).to(self.device)/len(voice_rc)
+        c_hat = self.vd(x_hat)
+        voice_rc = nn.functional.binary_cross_entropy(c_hat, min_encodings)
         
         return  uttr_rc, face_rc, voice_rc, uttr_kl, vq_loss
     

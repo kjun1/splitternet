@@ -57,7 +57,7 @@ class CrossJVSDataModule(pl.LightningDataModule):
 
     def __init__(
         self,
-        audio_data_dir: str = "36_40_melceps",
+        audio_data_dir: str = "36_40_train_mc",
         image_data_dir: str = "images",
         batch_size: int = 128,
     ):
